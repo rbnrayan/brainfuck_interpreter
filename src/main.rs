@@ -1,8 +1,19 @@
-use std::{fs::File, env, io::Read};
+use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
+use std::fs::File; 
+use std::env; 
+use std::io::{Read, self};
 
 const MEM_LENGTH: usize = 65535;
 
 fn main() {
+    let stdin = 0;
+    let termios = Termios::from_fd(stdin)
+        .expect("Failed to create a new termios from the file descriptor");
+    let mut termios_c = termios.clone();
+    termios_c.c_lflag &= !(ICANON | ECHO);
+    tcsetattr(stdin, TCSANOW, &mut termios_c)
+        .expect("Failed to change termios attributes immediately");
+
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         println!("Usage: cargo run <file>");
@@ -14,6 +25,9 @@ fn main() {
     f.read_to_string(&mut buf).expect("Failed to read the file to string");
     Brainfuck::new(buf)
         .interpret();
+
+    tcsetattr(stdin, TCSANOW, &termios)
+        .expect("Failed to reset termios attributes to default");
 }
 
 struct Brainfuck {
@@ -63,6 +77,11 @@ impl Brainfuck {
                 b'.' => {
                     print!("{}", self.memory[self.mem_ptr] as char);
                 },
+                b',' => {
+                    let mut buf: [u8; 1] = [0];
+                    io::stdin().read_exact(&mut buf).expect("Failed to read a character");
+                    self.memory[self.mem_ptr] = buf[0];
+                }
                 b'[' => {
                     if self.memory[self.mem_ptr] == 0 {
                         while src[src_ptr] != b']' {
@@ -79,8 +98,7 @@ impl Brainfuck {
                         jump_table.pop();
                     }
                 },
-                b'\n' | b'\r' => {},
-                unexpected_char => panic!("Found an unexpected character: {}", unexpected_char),
+                _ => {},
             }
             src_ptr += 1;
         }
