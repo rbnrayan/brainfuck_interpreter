@@ -93,7 +93,7 @@ impl Brainfuck {
                 },
                 b']' => {
                     if self.memory[self.mem_ptr] != 0 {
-                        src_ptr = *jump_table.iter().last().expect("Failed to get the last value of the jump table. (Hint: add a closing bracket ']')");
+                        src_ptr = *jump_table.iter().last().expect("Failed to get the last value of the jump table.");
                     } else {
                         jump_table.pop();
                     }
